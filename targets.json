@@ -16,40 +16,6 @@
     "targetYellow": 1350
   },
   {
-    "id": "r7_5700x",
-    "name": "AMD Ryzen 7 5700X",
-    "query": "Ryzen 7 5700X",
-    "kabumQuery": "ryzen-7-5700x",
-    "meupcSlug": "GF9m4K/processador-amd-ryzen-7-5700x-100100000926wof",
-    "mustInclude": [
-      "5700x"
-    ],
-    "mustExclude": [
-      "5700x3d",
-      "5700g",
-      "pc gamer",
-      "computador"
-    ],
-    "targetGreen": 999,
-    "targetYellow": 1080
-  },
-  {
-    "id": "r7_5700x3d",
-    "name": "AMD Ryzen 7 5700X3D",
-    "query": "Ryzen 7 5700X3D",
-    "kabumQuery": "ryzen-7-5700x3d",
-    "meupcSlug": "HD68k9/processador-amd-ryzen-7-5700x3d-100100001503wof",
-    "mustInclude": [
-      "5700x3d"
-    ],
-    "mustExclude": [
-      "pc gamer",
-      "computador"
-    ],
-    "targetGreen": 1499,
-    "targetYellow": 1650
-  },
-  {
     "id": "rtx5060ti_16",
     "name": "GeForce RTX 5060 Ti 16GB GDDR7",
     "query": "RTX 5060 Ti 16GB",
@@ -105,5 +71,22 @@
     ],
     "targetGreen": 2499,
     "targetYellow": 2699
+  },
+  {
+    "id": "b550m_plus",
+    "name": "Placa-mãe Asus TUF GAMING B550M-PLUS",
+    "query": "b550m plus",
+    "kabumQuery": "b550m-plus",
+    "meupcSlug": "vGu3B8/placa-mae-asus-tuf-gaming-b550m-plus",
+    "mustInclude": [
+      "b550m plus"
+    ],
+    "mustExclude": [
+      "pc gamer",
+      "computador",
+      "notebook"
+    ],
+    "targetGreen": 684,
+    "targetYellow": 739
   }
 ]
