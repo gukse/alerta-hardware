@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Configurador — Bot de Alerta de Hardware</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0b0f19; color: #e2e8f0; font-family: Inter, system-ui, sans-serif; }
+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; }
+    input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+  </style>
+</head>
+<body class="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+
+  <!-- HEADER -->
+  <header class="card p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-l-4 border-l-emerald-500">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-0.5 text-xs font-bold uppercase rounded bg-emerald-500/20 text-emerald-400">Painel Local Ativo</span>
+        <span class="px-2.5 py-0.5 text-xs font-semibold rounded bg-indigo-500/20 text-indigo-300">Repositório: gukse/alerta-hardware</span>
+      </div>
+      <h1 class="text-2xl font-bold text-white mt-1">⚙️ Configurador do Bot de Preços (Discord + GitHub)</h1>
+      <p class="text-sm text-slate-400">Adicione novas peças, remova ou altere seu preço alvo (<code class="text-emerald-400">targetGreen</code>) e sincronize direto com o GitHub em 1 clique.</p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2.5">
+      <button onclick="checkLivePrices()" id="btnCheckPrices" class="px-4 py-2.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition">
+        🔎 Checar Preços ao Vivo
+      </button>
+      <button onclick="saveAll(false)" class="px-4 py-2.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 transition">
+        💾 Salvar no PC
+      </button>
+      <button onclick="saveAll(true)" id="btnSyncGithub" class="px-4 py-2.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30 transition">
+        🚀 Salvar e Atualizar no GitHub
+      </button>
+      <a href="/simulador" class="px-3 py-2.5 rounded-lg text-xs font-semibold bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-800 transition">
+        📊 Simulador FPS
+      </a>
+    </div>
+  </header>
+
+  <!-- STATUS BANNER -->
+  <div id="statusBanner" class="hidden p-3.5 rounded-xl border text-xs font-semibold flex items-center justify-between"></div>
+
+  <!-- GRID PRINCIPAL: ADICIONAR/EDITAR + LISTA DE MONITORAMENTO -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- COLUNA ESQUERDA: BUSCADOR AUTOMÁTICO + FORMULÁRIO DE PEÇA -->
+    <div class="lg:col-span-5 space-y-5">
+
+      <!-- BUSCA AUTOMÁTICA NAS LOJAS -->
+      <div class="card p-5 space-y-3 border-t-2 border-t-indigo-500">
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <span>🔍 1. Buscar Peça nas Lojas (Auto-Preencher)</span>
+        </h2>
+        <p class="text-xs text-slate-400">
+          Digite qualquer hardware (ex: <span class="text-slate-200">B550M Aorus</span>, <span class="text-slate-200">Ryzen 7 7800X3D</span>, <span class="text-slate-200">SSD 1TB NVMe</span>) para puxar o preço atual e preencher o formulário sozinho:
+        </p>
+        <div class="flex gap-2">
+          <input type="text" id="catalogSearchInput" placeholder="Ex: Placa mãe B550M, RX 7800 XT..."
+            onkeydown="if(event.key==='Enter') searchCatalog()"
+            class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none" />
+          <button onclick="searchCatalog()" id="btnSearchCatalog" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
+            Buscar
+          </button>
+        </div>
+        <div id="searchResultsBox" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- FORMULÁRIO DE ADICIONAR / EDITAR ITEM -->
+      <div class="card p-5 space-y-3.5 border-t-2 border-t-emerald-500">
+        <div class="flex items-center justify-between">
+          <h2 id="formTitle" class="text-base font-bold text-white">➕ 2. Adicionar / Editar Peça</h2>
+          <button onclick="resetForm()" class="text-xs text-slate-400 hover:text-white underline">Limpar campos</button>
+        </div>
+
+        <input type="hidden" id="editIndex" value="-1" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Nome de Exibição *</label>
+            <input type="text" id="fieldName" placeholder="Ex: Placa-Mãe Gigabyte B550M Aorus Elite"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-emerald-400 mb-1">🎯 Preço Alvo Desejado (R$) *</label>
+            <input type="number" id="fieldTargetGreen" placeholder="Ex: 749"
+              class="w-full bg-emerald-950/40 border border-emerald-600 rounded-lg px-3 py-2 text-xs font-bold text-emerald-300 focus:border-emerald-400 outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Termo de Busca (Query) *</label>
+            <input type="text" id="fieldQuery" placeholder="Ex: B550M Aorus Elite"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">ID Único (automático se vazio)</label>
+            <input type="text" id="fieldId" placeholder="Ex: b550m_aorus"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-emerald-500 outline-none" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">
+            Palavras Obrigatórias no Título (separadas por vírgula)
+          </label>
+          <input type="text" id="fieldMustInclude" placeholder="Ex: b550m, aorus"
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 outline-none" />
+          <p class="text-xs text-slate-400 mt-1">Garante que o bot não confunda modelos (ex: <code class="text-slate-300">rtx 5070, 12gb</code>).</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Palavras Proibidas (excluir)</label>
+            <input type="text" id="fieldMustExclude" value="pc gamer, computador, notebook"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-emerald-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Slug MeuPC (opcional)</label>
+            <input type="text" id="fieldMeupcSlug" placeholder="Ex: jSH2T5/cpu-amd..."
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-emerald-500 outline-none" />
+          </div>
+        </div>
+
+        <button onclick="submitItemForm()" id="btnSubmitForm"
+          class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow">
+          ➕ Adicionar Peça à Lista
+        </button>
+      </div>
+    </div>
+
+    <!-- COLUNA DIREITA: LISTA DE PEÇAS MONITORADAS -->
+    <div class="lg:col-span-7 card p-5 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+        <div>
+          <h2 class="text-base font-bold text-white">📋 Peças Monitoradas Atualmente (<span id="countItems">0</span>)</h2>
+          <p class="text-xs text-slate-400">Você pode alterar o valor da **Sua Meta (R$)** diretamente na tabela abaixo. O bot só avisa no Discord quando o preço for **igual ou menor** que a sua meta!</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400 uppercase">
+              <th class="py-2.5 px-2">Peça / Filtros</th>
+              <th class="py-2.5 px-2 text-emerald-400">🎯 Sua Meta (R$)</th>
+              <th class="py-2.5 px-2">Menor Preço Agora</th>
+              <th class="py-2.5 px-2">Status</th>
+              <th class="py-2.5 px-2 text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="targetsTableBody" class="divide-y divide-slate-800/70"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+let targets = [];
+let livePrices = {}; // id -> { price, store, link, title }
+
+function showStatus(msg, isError = false) {
+  const el = document.getElementById('statusBanner');
+  el.className = `p-3.5 rounded-xl border text-xs font-semibold flex items-center justify-between ${
+    isError
+      ? 'bg-red-950/70 border-red-700 text-red-200'
+      : 'bg-emerald-950/70 border-emerald-700 text-emerald-200'
+  }`;
+  el.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.classList.add('hidden')" class="text-slate-400 hover:text-white ml-4">✕</button>`;
+  el.classList.remove('hidden');
+}
+
+async function loadTargets() {
+  try {
+    const res = await fetch('/api/targets');
+    targets = await res.json();
+    renderTable();
+  } catch (err) {
+    showStatus('❌ Erro ao carregar targets.json: ' + err.message, true);
+  }
+}
+
+function renderTable() {
+  document.getElementById('countItems').textContent = targets.length;
+  const tbody = document.getElementById('targetsTableBody');
+
+  if (!targets.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">Nenhuma peça cadastrada. Adicione uma ao lado!</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = targets.map((item, idx) => {
+    const offer = livePrices[item.id];
+    let priceHtml = `<span class="text-slate-400">Clique em "Checar Preços"</span>`;
+    let statusHtml = `<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400">—</span>`;
+
+    if (offer) {
+      if (offer.price) {
+        const isHit = Math.floor(offer.price) <= item.targetGreen;
+        const diff = Math.round(offer.price - item.targetGreen);
+        priceHtml = `<a href="${offer.link}" target="_blank" class="font-bold text-white hover:text-emerald-400 underline">R$ ${offer.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</a>
+          <div class="text-slate-400">${offer.store}</div>`;
+        statusHtml = isHit
+          ? `<span class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 font-bold">🟢 DISPARA ALERTA</span>`
+          : `<span class="px-2 py-1 rounded bg-slate-800 text-slate-300">🔴 +R$ ${diff.toLocaleString('pt-BR')} acima</span>`;
+      } else {
+        priceHtml = `<span class="text-slate-400">Sem estoque</span>`;
+      }
+    }
+
+    const incBadges = (item.mustInclude || []).map(k => `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">${k}</span>`).join(' ');
+
+    return `
+      <tr class="hover:bg-slate-900/50">
+        <td class="py-3 px-2">
+          <div class="font-bold text-white text-sm">${item.name}</div>
+          <div class="text-slate-400 mt-0.5">Busca: <code class="text-indigo-300">${item.query}</code> ${incBadges}</div>
+        </td>
+        <td class="py-3 px-2">
+          <div class="flex items-center gap-1">
+            <span class="text-slate-400">R$</span>
+            <input type="number" value="${item.targetGreen}"
+              onchange="quickUpdateTarget(${idx}, this.value)"
+              class="w-24 bg-emerald-950/40 border border-emerald-700 rounded-lg px-2.5 py-1.5 text-emerald-300 font-bold focus:border-emerald-400 outline-none" />
+          </div>
+        </td>
+        <td class="py-3 px-2">${priceHtml}</td>
+        <td class="py-3 px-2">${statusHtml}</td>
+        <td class="py-3 px-2 text-right space-x-1 whitespace-nowrap">
+          <button onclick="editItem(${idx})" class="px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 font-semibold transition">
+            ✏️ Editar
+          </button>
+          <button onclick="removeItem(${idx})" class="px-2.5 py-1.5 rounded bg-red-950/60 hover:bg-red-900/80 text-red-300 font-semibold transition">
+            🗑️ Remover
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function quickUpdateTarget(idx, newVal) {
+  const parsed = parseInt(newVal, 10);
+  if (!parsed || parsed <= 0) return;
+  targets[idx].targetGreen = parsed;
+  targets[idx].targetYellow = Math.round(parsed * 1.08);
+  renderTable();
+  showStatus(`💡 Meta de "${targets[idx].name}" alterada para R$ ${parsed}. Clique em "Salvar e Atualizar no GitHub" no topo para gravar!`);
+}
+
+function editItem(idx) {
+  const item = targets[idx];
+  document.getElementById('editIndex').value = idx;
+  document.getElementById('fieldName').value = item.name || '';
+  document.getElementById('fieldTargetGreen').value = item.targetGreen || '';
+  document.getElementById('fieldQuery').value = item.query || '';
+  document.getElementById('fieldId').value = item.id || '';
+  document.getElementById('fieldMustInclude').value = (item.mustInclude || []).join(', ');
+  document.getElementById('fieldMustExclude').value = (item.mustExclude || ['pc gamer', 'computador', 'notebook']).join(', ');
+  document.getElementById('fieldMeupcSlug').value = item.meupcSlug || '';
+
+  document.getElementById('formTitle').textContent = `✏️ Editando: ${item.name}`;
+  document.getElementById('btnSubmitForm').textContent = '✔️ Atualizar Peça na Lista';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetForm() {
+  document.getElementById('editIndex').value = -1;
+  document.getElementById('fieldName').value = '';
+  document.getElementById('fieldTargetGreen').value = '';
+  document.getElementById('fieldQuery').value = '';
+  document.getElementById('fieldId').value = '';
+  document.getElementById('fieldMustInclude').value = '';
+  document.getElementById('fieldMustExclude').value = 'pc gamer, computador, notebook';
+  document.getElementById('fieldMeupcSlug').value = '';
+  document.getElementById('formTitle').textContent = '➕ 2. Adicionar / Editar Peça';
+  document.getElementById('btnSubmitForm').textContent = '➕ Adicionar Peça à Lista';
+}
+
+function submitItemForm() {
+  const idx = parseInt(document.getElementById('editIndex').value, 10);
+  const name = document.getElementById('fieldName').value.trim();
+  const targetGreen = parseInt(document.getElementById('fieldTargetGreen').value, 10);
+  const query = document.getElementById('fieldQuery').value.trim() || name;
+  let id = document.getElementById('fieldId').value.trim();
+  if (!id) {
+    id = query.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  }
+
+  if (!name || !targetGreen) {
+    showStatus('❌ Preencha pelo menos o Nome da Peça e o Preço Alvo Desejado (R$).', true);
+    return;
+  }
+
+  const mustInclude = document.getElementById('fieldMustInclude').value
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  const mustExclude = document.getElementById('fieldMustExclude').value
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  const meupcSlug = document.getElementById('fieldMeupcSlug').value.trim();
+  const kabumQuery = query.toLowerCase().replace(/\s+/g, '-');
+
+  const newItem = {
+    id,
+    name,
+    query,
+    kabumQuery,
+    meupcSlug,
+    mustInclude: mustInclude.length ? mustInclude : [query.toLowerCase()],
+    mustExclude: mustExclude.length ? mustExclude : ['pc gamer', 'computador', 'notebook'],
+    targetGreen,
+    targetYellow: Math.round(targetGreen * 1.08)
+  };
+
+  if (idx >= 0 && idx < targets.length) {
+    targets[idx] = newItem;
+    showStatus(`✅ Peça "${name}" atualizada na lista! Clique em "Salvar e Atualizar no GitHub" para gravar.`);
+  } else {
+    targets.push(newItem);
+    showStatus(`✅ Peça "${name}" adicionada! Clique em "Salvar e Atualizar no GitHub" para gravar.`);
+  }
+
+  resetForm();
+  renderTable();
+}
+
+function removeItem(idx) {
+  const removed = targets[idx];
+  targets.splice(idx, 1);
+  renderTable();
+  showStatus(`🗑️ Peça "${removed.name}" removida da lista. Clique em "Salvar e Atualizar no GitHub" para confirmar.`);
+}
+
+async function searchCatalog() {
+  const q = document.getElementById('catalogSearchInput').value.trim();
+  if (!q) return;
+  const btn = document.getElementById('btnSearchCatalog');
+  const box = document.getElementById('searchResultsBox');
+  btn.textContent = 'Buscando...';
+  btn.disabled = true;
+  box.innerHTML = `<div class="text-xs text-slate-400 py-2">Consultando MeuPC.net em tempo real...</div>`;
+
+  try {
+    const res = await fetch('/api/search?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    const list = data.results || [];
+    if (!list.length) {
+      box.innerHTML = `<div class="text-xs text-amber-300 py-2">Nenhum resultado automático encontrado. Você pode preencher os campos abaixo manualmente!</div>`;
+    } else {
+      box.innerHTML = list.map((r, i) => `
+        <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
+          <div>
+            <div class="text-xs font-bold text-white">${r.title}</div>
+            <div class="text-xs text-emerald-400 font-semibold">
+              ${r.pricePix > 0 ? `Menor PIX hoje: R$ ${r.pricePix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${r.store})` : 'Sem estoque no momento'}
+            </div>
+          </div>
+          <button onclick='fillFromSearch(${JSON.stringify(r).replace(/'/g, "&#39;")})'
+            class="px-2.5 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold whitespace-nowrap">
+            + Usar Peça
+          </button>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    box.innerHTML = `<div class="text-xs text-red-400">Erro na busca: ${err.message}</div>`;
+  } finally {
+    btn.textContent = 'Buscar';
+    btn.disabled = false;
+  }
+}
+
+function fillFromSearch(r) {
+  const cleanTitle = r.title.split('(')[0].trim();
+  const qInput = document.getElementById('catalogSearchInput').value.trim();
+  const suggestedTarget = r.pricePix > 0 ? Math.round(r.pricePix * 0.9) : 1000;
+
+  document.getElementById('editIndex').value = -1;
+  document.getElementById('fieldName').value = cleanTitle;
+  document.getElementById('fieldQuery').value = qInput || cleanTitle;
+  document.getElementById('fieldId').value = (qInput || cleanTitle).toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 24);
+  document.getElementById('fieldTargetGreen').value = suggestedTarget;
+  document.getElementById('fieldMustInclude').value = (qInput || cleanTitle).toLowerCase();
+  document.getElementById('fieldMeupcSlug').value = r.meupcSlug || '';
+  document.getElementById('formTitle').textContent = '➕ Confirmar Nova Peça';
+  document.getElementById('btnSubmitForm').textContent = '➕ Adicionar Peça à Lista';
+}
+
+async function checkLivePrices() {
+  const btn = document.getElementById('btnCheckPrices');
+  btn.textContent = '⏳ Varrendo lojas...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/check-prices', { method: 'POST' });
+    const data = await res.json();
+    for (const item of data.prices || []) {
+      livePrices[item.id] = item.bestOffer || { price: 0 };
+    }
+    renderTable();
+    showStatus('✅ Preços ao vivo atualizados direto do varejo brasileiro!');
+  } catch (err) {
+    showStatus('❌ Erro ao checar preços: ' + err.message, true);
+  } finally {
+    btn.textContent = '🔎 Checar Preços ao Vivo';
+    btn.disabled = false;
+  }
+}
+
+async function saveAll(syncGithub) {
+  const btn = document.getElementById('btnSyncGithub');
+  const prevText = btn.textContent;
+  if (syncGithub) {
+    btn.textContent = '⏳ Salvando e enviando p/ GitHub...';
+    btn.disabled = true;
+  }
+  try {
+    const res = await fetch('/api/targets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targets, syncGithub })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showStatus(`✅ ${data.message}`);
+    } else {
+      showStatus(`❌ ${data.error || 'Falha ao salvar.'}`, true);
+    }
+  } catch (err) {
+    showStatus(`❌ Erro ao salvar: ${err.message}`, true);
+  } finally {
+    if (syncGithub) {
+      btn.textContent = prevText;
+      btn.disabled = false;
+    }
+  }
+}
+
+loadTargets();
+</script>
+</body>
+</html>
