@@ -1,0 +1,34 @@
+name: Monitor de Preços Hardware BR
+
+on:
+  schedule:
+    # Roda automaticamente a cada 30 minutos
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      send_summary:
+        description: 'Enviar também tabela resumo completa no Discord?'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  check-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Executar Monitor e Disparar Webhook Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SEND_SUMMARY: ${{ github.event.inputs.send_summary || 'false' }}
+        run: node monitor.js

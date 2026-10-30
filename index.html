@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UpgradeLab BR - Simulador AM4/AM5 + Monitor Discord</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { background-color: #0b0f19; color: #e2e8f0; font-family: Inter, system-ui, sans-serif; }
+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; }
+    .selected-item { border-color: #10b981 !important; background: rgba(16, 185, 129, 0.12) !important; }
+    input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+  </style>
+</head>
+<body class="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+
+  <!-- HEADER -->
+  <header class="card p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-l-4 border-l-emerald-500">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-0.5 text-xs font-bold uppercase rounded bg-emerald-500/20 text-emerald-400">Preços Reais Varejo BR Atualizados</span>
+        <span class="px-2.5 py-0.5 text-xs font-semibold rounded bg-indigo-500/20 text-indigo-300">Base: R5 3600 + 32GB DDR4 + GTX 1660</span>
+      </div>
+      <h1 class="text-2xl font-bold text-white mt-1">UpgradeLab BR — Simulador de Performance, Preços & Bot Discord</h1>
+      <p class="text-sm text-slate-400">Valores corrigidos (RTX 5060 Ti 16GB @ R$ 4.899, RTX 5070 @ R$ 5.499, R7 5800XT @ R$ 1.439) + Exportador de Alertas.</p>
+    </div>
+
+    <!-- NAVEGAÇÃO DE ABAS -->
+    <div class="flex flex-wrap gap-2">
+      <button onclick="switchTab('sim')" id="tabBtn-sim" class="px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white transition">
+        1. Simulador & Gargalo
+      </button>
+      <button onclick="switchTab('prices')" id="tabBtn-prices" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+        2. Mapeador & Semáforo
+      </button>
+      <button onclick="switchTab('discord')" id="tabBtn-discord" class="px-4 py-2 rounded-lg text-sm font-bold bg-indigo-900/70 text-indigo-200 hover:bg-indigo-800 transition">
+        3. Bot Discord & Webhook
+      </button>
+    </div>
+  </header>
+
+  <!-- PRESETS RÁPIDOS -->
+  <section class="flex flex-wrap items-center gap-2 text-xs">
+    <span class="text-slate-400 font-semibold mr-1">Combos Rápidos:</span>
+    <button onclick="applyPreset('r7_5800xt', 'rx7700xt')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700">
+      🔥 Fuga dos R$ 5k: R7 5800XT + RX 7700 XT 12GB
+    </button>
+    <button onclick="applyPreset('r7_5700x3d', 'rtx5070')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700">
+      ⚡ Rei 1440p AM4: R7 5700X3D + RTX 5070 12GB
+    </button>
+    <button onclick="applyPreset('r7_5800xt', 'rtx5060ti_16')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700">
+      ⚠️ Alerta R$ 5k: R7 5800XT + RTX 5060 Ti 16GB
+    </button>
+    <button onclick="applyPreset('r5_5600', 'rx7600')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+      💰 Custo-Benefício: R5 5600 + RX 7600 8GB
+    </button>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- ABA 1: SIMULADOR DE DESEMPENHO & GARGALO                  -->
+  <!-- ========================================================= -->
+  <div id="tab-sim" class="space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- SELETOR CPU -->
+      <div class="lg:col-span-4 card p-4 space-y-3">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <h2 class="font-bold text-white">1. Processador (CPU)</h2>
+          <span class="text-xs text-emerald-400">AM4 = R$ 0 em RAM/Placa-mãe</span>
+        </div>
+        <div id="cpu-list" class="space-y-2 max-h-[460px] overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- SELETOR GPU -->
+      <div class="lg:col-span-4 card p-4 space-y-3">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <h2 class="font-bold text-white">2. Placa de Vídeo (GPU)</h2>
+          <label class="flex items-center gap-1.5 text-xs cursor-pointer bg-indigo-950/80 border border-indigo-700 px-2 py-1 rounded text-indigo-300">
+            <input type="checkbox" id="dlssToggle" onchange="renderAll()" class="accent-indigo-500">
+            <span>Ativar DLSS 4 / FSR FG</span>
+          </label>
+        </div>
+        <div id="gpu-list" class="space-y-2 max-h-[460px] overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- DIAGNÓSTICO DO COMBO -->
+      <div class="lg:col-span-4 card p-4 flex flex-col justify-between space-y-4">
+        <div class="space-y-3">
+          <h2 class="font-bold text-white border-b border-slate-800 pb-2">3. Diagnóstico & Custo Real</h2>
+          <div id="combo-summary" class="space-y-3"></div>
+        </div>
+        <div class="pt-2 border-t border-slate-800">
+          <canvas id="fpsChart" height="210"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- JOGOS REAIS & CUSTO POR FPS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card p-4">
+        <h3 class="font-bold text-white mb-3 text-sm">Desempenho Estimado em 5 Jogos (1080p Ultra / 1440p)</h3>
+        <div id="games-bars" class="space-y-3 text-xs"></div>
+      </div>
+      <div class="card p-4">
+        <h3 class="font-bold text-white mb-2 text-sm">R$ Pago por cada FPS Ganho (Menor = Melhor Custo-Benefício)</h3>
+        <p class="text-xs text-slate-400 mb-3">Compara o custo real do upgrade dividido pelo ganho de FPS em 1440p sobre sua GTX 1660.</p>
+        <canvas id="costFpsChart" height="175"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- ABA 2: MAPEADOR MULTI-LOJAS & SEMÁFORO DE PREÇOS          -->
+  <!-- ========================================================= -->
+  <div id="tab-prices" class="hidden space-y-6">
+    <div class="card p-5 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="text-lg font-bold text-white">Matriz de Preços Reais no Brasil (Clique no valor para editar ofertas)</h2>
+          <p class="text-xs text-slate-400">Os preços refletem a realidade atual do varejo (ex: RTX 5060 Ti 16GB na faixa de R$ 4.899 no PIX e R$ 5.650 parcelado).</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-4 text-xs">
+          <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-lg border border-slate-700">
+            <button id="payPixBtn" onclick="setPaymentMode('pix')" class="px-3 py-1 rounded bg-emerald-600 text-white font-bold">PIX (À Vista)</button>
+            <button id="payInstallBtn" onclick="setPaymentMode('installment')" class="px-3 py-1 rounded text-slate-400 hover:text-white">Parcelado 10x/12x (+15%)</button>
+          </div>
+          <label class="flex items-center gap-2">
+            <span class="text-slate-300">Cupom (%):</span>
+            <input type="number" id="couponInput" value="0" min="0" max="40" onchange="renderAll()" class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-center">
+          </label>
+          <label class="flex items-center gap-2">
+            <span class="text-slate-300">Cashback (%):</span>
+            <input type="number" id="cashbackInput" value="0" min="0" max="30" onchange="renderAll()" class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-center">
+          </label>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400 uppercase">
+              <th class="py-2.5 px-3">Peça Monitorada</th>
+              <th class="py-2.5 px-3">Pichau</th>
+              <th class="py-2.5 px-3">KaBuM!</th>
+              <th class="py-2.5 px-3">Terabyte</th>
+              <th class="py-2.5 px-3">Amazon / ML</th>
+              <th class="py-2.5 px-3 text-emerald-400">Menor Líquido</th>
+              <th class="py-2.5 px-3 text-amber-400">Meta Alerta (R$)</th>
+              <th class="py-2.5 px-3">Semáforo Hoje</th>
+            </tr>
+          </thead>
+          <tbody id="price-matrix-body" class="divide-y divide-slate-800/70"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- ABA 3: CENTRAL BOT DISCORD & WEBHOOK                      -->
+  <!-- ========================================================= -->
+  <div id="tab-discord" class="hidden space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card p-5 space-y-4">
+        <h2 class="text-lg font-bold text-white">Testar Webhook do Discord Direto do Simulador</h2>
+        <p class="text-xs text-slate-400">
+          Crie um Webhook no seu servidor do Discord (<code class="text-indigo-300">Editar Canal → Integrações → Webhooks → Novo Webhook</code>), cole a URL abaixo e teste o envio de um card de oferta com o seu combo selecionado!
+        </p>
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-slate-300">URL do Webhook do seu Canal Discord:</label>
+          <input type="password" id="webhookUrlInput" placeholder="https://discord.com/api/webhooks/SEU_ID/SEU_TOKEN" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none">
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <button onclick="sendTestWebhook()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
+            🚀 Disparar Alerta de Teste no Discord
+          </button>
+          <button onclick="copyTargetsJson()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">
+            📋 Copiar targets.json Atualizado
+          </button>
+        </div>
+        <p id="webhookStatus" class="text-xs font-semibold text-slate-400"></p>
+      </div>
+
+      <div class="card p-5 space-y-3">
+        <h2 class="text-lg font-bold text-white">Arquivo <code class="text-emerald-400">targets.json</code> Gerado pelas suas Metas</h2>
+        <p class="text-xs text-slate-400">Sempre que você altera uma Meta de Alerta na Aba 2, este JSON é atualizado automaticamente para você colar no seu repositório do Bot no GitHub:</p>
+        <pre id="jsonPreview" class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-[11px] text-emerald-300 overflow-x-auto max-h-60"></pre>
+      </div>
+    </div>
+  </div>
+
+<script>
+const cpus = [
+  { id: 'r5_3600', name: 'Ryzen 5 3600 (Seu Atual)', socket: 'AM4', cores: '6C/12T', boost: '4.2 GHz', cache: '32MB', tdp: '65W', mult1080: 1.00, mult1440: 1.00, extraKitCost: 0, stores: { pichau: 0, kabum: 0, terabyte: 0, amazon: 0 }, targetPrice: 0 },
+  { id: 'r5_5600', name: 'Ryzen 5 5600', socket: 'AM4', cores: '6C/12T', boost: '4.4 GHz', cache: '32MB', tdp: '65W', mult1080: 1.24, mult1440: 1.16, extraKitCost: 0, stores: { pichau: 789, kabum: 829, terabyte: 799, amazon: 849 }, targetPrice: 699 },
+  { id: 'r7_5700x', name: 'Ryzen 7 5700X', socket: 'AM4', cores: '8C/16T', boost: '4.6 GHz', cache: '32MB', tdp: '65W', mult1080: 1.29, mult1440: 1.20, extraKitCost: 0, stores: { pichau: 1149, kabum: 1189, terabyte: 1159, amazon: 1199 }, targetPrice: 999 },
+  { id: 'r7_5800xt', name: 'Ryzen 7 5800XT (c/ Wraith Prism)', socket: 'AM4', cores: '8C/16T', boost: '4.8 GHz', cache: '32MB', tdp: '105W', mult1080: 1.33, mult1440: 1.23, extraKitCost: 0, stores: { pichau: 1439, kabum: 1589, terabyte: 1499, amazon: 1570 }, targetPrice: 1250 },
+  { id: 'r7_5700x3d', name: 'Ryzen 7 5700X3D (3D V-Cache)', socket: 'AM4', cores: '8C/16T', boost: '4.1 GHz', cache: '96MB', tdp: '105W', mult1080: 1.52, mult1440: 1.36, extraKitCost: 0, stores: { pichau: 1899, kabum: 2299, terabyte: 1999, amazon: 2591 }, targetPrice: 1499 },
+  { id: 'r5_7600', name: 'Ryzen 5 7600 (Migração AM5)', socket: 'AM5', cores: '6C/12T', boost: '5.1 GHz', cache: '32MB', tdp: '65W', mult1080: 1.54, mult1440: 1.38, extraKitCost: 1650, stores: { pichau: 1299, kabum: 1289, terabyte: 1320, amazon: 1340 }, targetPrice: 1150 },
+  { id: 'r7_9800x3d', name: 'Ryzen 7 9800X3D (Topo AM5)', socket: 'AM5', cores: '8C/16T', boost: '5.2 GHz', cache: '96MB', tdp: '120W', mult1080: 1.85, mult1440: 1.62, extraKitCost: 1950, stores: { pichau: 4199, kabum: 4299, terabyte: 4150, amazon: 4399 }, targetPrice: 3699 }
+];
+
+const gpus = [
+  { id: 'gtx1660', name: 'GTX 1660 6GB (Sua Atual)', vram: '6GB GDDR5', base1080: 52, base1440: 34, dlssMult: 1.0, psu: 450, stores: { pichau: 0, kabum: 0, terabyte: 0, amazon: 0 }, targetPrice: 0 },
+  { id: 'rx7600', name: 'Radeon RX 7600 8GB', vram: '8GB GDDR6', base1080: 98, base1440: 66, dlssMult: 1.35, psu: 550, stores: { pichau: 1899, kabum: 1959, terabyte: 1879, amazon: 1999 }, targetPrice: 1650 },
+  { id: 'rtx5060', name: 'GeForce RTX 5060 8GB (Blackwell)', vram: '8GB GDDR7', base1080: 122, base1440: 86, dlssMult: 1.70, psu: 550, stores: { pichau: 2899, kabum: 2999, terabyte: 2949, amazon: 3099 }, targetPrice: 2499 },
+  { id: 'rx7700xt', name: 'Radeon RX 7700 XT 12GB', vram: '12GB GDDR6', base1080: 142, base1440: 108, dlssMult: 1.45, psu: 650, stores: { pichau: 3499, kabum: 3599, terabyte: 3459, amazon: 3670 }, targetPrice: 3099 },
+  { id: 'rtx5060ti_8', name: 'GeForce RTX 5060 Ti 8GB', vram: '8GB GDDR7', base1080: 138, base1440: 99, dlssMult: 1.75, psu: 600, stores: { pichau: 3699, kabum: 3899, terabyte: 3799, amazon: 4199 }, targetPrice: 3199 },
+  { id: 'rtx5060ti_16', name: 'GeForce RTX 5060 Ti 16GB (Inflada BR)', vram: '16GB GDDR7', base1080: 144, base1440: 112, dlssMult: 1.80, psu: 600, stores: { pichau: 4899, kabum: 5099, terabyte: 4999, amazon: 4799 }, targetPrice: 3699 },
+  { id: 'rtx5070', name: 'GeForce RTX 5070 12GB (Mais Placa!)', vram: '12GB GDDR7', base1080: 178, base1440: 144, dlssMult: 1.85, psu: 650, stores: { pichau: 5499, kabum: 5699, terabyte: 5599, amazon: 5799 }, targetPrice: 4699 },
+  { id: 'rtx5090', name: 'GeForce RTX 5090 32GB', vram: '32GB GDDR7', base1080: 295, base1440: 265, dlssMult: 2.00, psu: 1000, stores: { pichau: 19499, kabum: 19999, terabyte: 19299, amazon: 20499 }, targetPrice: 16999 }
+];
+
+let selectedCpuId = 'r7_5800xt';
+let selectedGpuId = 'rtx5060ti_16';
+let paymentMode = 'pix';
+let fpsChartInstance = null;
+let costChartInstance = null;
+
+function getEffectivePrice(item, storeKey) {
+  const raw = item.stores[storeKey] || 0;
+  if (raw === 0) return 0;
+  const modeMult = paymentMode === 'installment' ? 1.15 : 1.0;
+  const coupon = parseFloat(document.getElementById('couponInput')?.value || 0) / 100;
+  const cashback = parseFloat(document.getElementById('cashbackInput')?.value || 0) / 100;
+  return Math.round(raw * modeMult * (1 - coupon) * (1 - cashback));
+}
+
+function getBestStoreOffer(item) {
+  const entries = Object.entries(item.stores).map(([store, val]) => ({
+    store,
+    price: getEffectivePrice(item, store)
+  })).filter(x => x.price > 0);
+  if (!entries.length) return { store: 'Atual', price: 0 };
+  return entries.reduce((min, cur) => cur.price < min.price ? cur : min, entries[0]);
+}
+
+function calcComboMetrics(cpu, gpu, useDlss) {
+  const bottleneck1080 = (cpu.id === 'r5_3600' && gpu.base1080 > 110) ? 0.72 : 1.0;
+  const dlssFactor = useDlss ? gpu.dlssMult : 1.0;
+  const fps1080 = Math.round(gpu.base1080 * cpu.mult1080 * bottleneck1080 * dlssFactor);
+  const fps1440 = Math.round(gpu.base1440 * cpu.mult1440 * (bottleneck1080 < 1 ? 0.84 : 1.0) * dlssFactor);
+  const low1 = Math.round(fps1080 * (cpu.id.includes('x3d') ? 0.84 : 0.74));
+  return { fps1080, fps1440, low1, bottleneck1080 };
+}
+
+function renderLists() {
+  const cpuEl = document.getElementById('cpu-list');
+  cpuEl.innerHTML = cpus.map(c => {
+    const best = getBestStoreOffer(c);
+    const active = c.id === selectedCpuId ? 'selected-item' : 'border-slate-800 bg-slate-900/60';
+    return `
+      <div onclick="selectedCpuId='${c.id}'; renderAll();" class="p-3 rounded-lg border cursor-pointer transition ${active}">
+        <div class="flex justify-between items-center">
+          <span class="font-bold text-sm text-white">${c.name}</span>
+          <span class="text-xs font-bold text-emerald-400">${best.price === 0 ? 'R$ 0' : 'R$ ' + best.price.toLocaleString('pt-BR')}</span>
+        </div>
+        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+          <span>${c.socket} • ${c.cores} • Boost ${c.boost} • L3 ${c.cache}</span>
+          <span>TDP ${c.tdp}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  const gpuEl = document.getElementById('gpu-list');
+  gpuEl.innerHTML = gpus.map(g => {
+    const best = getBestStoreOffer(g);
+    const active = g.id === selectedGpuId ? 'selected-item' : 'border-slate-800 bg-slate-900/60';
+    const warnBadge = g.id === 'rtx5060ti_16' ? '<span class="text-[10px] bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded ml-1">Cara no BR!</span>' : '';
+    return `
+      <div onclick="selectedGpuId='${g.id}'; renderAll();" class="p-3 rounded-lg border cursor-pointer transition ${active}">
+        <div class="flex justify-between items-center">
+          <span class="font-bold text-sm text-white">${g.name}${warnBadge}</span>
+          <span class="text-xs font-bold text-emerald-400">${best.price === 0 ? 'R$ 0' : 'R$ ' + best.price.toLocaleString('pt-BR')}</span>
+        </div>
+        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+          <span>${g.vram} • Fonte mín: ${g.psu}W</span>
+          <span>Meta: R$ ${g.targetPrice.toLocaleString('pt-BR')}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderSummaryAndCharts() {
+  const cpu = cpus.find(c => c.id === selectedCpuId);
+  const gpu = gpus.find(g => g.id === selectedGpuId);
+  const useDlss = document.getElementById('dlssToggle').checked;
+  const metrics = calcComboMetrics(cpu, gpu, useDlss);
+  const cpuBest = getBestStoreOffer(cpu);
+  const gpuBest = getBestStoreOffer(gpu);
+  const totalUpgrade = cpuBest.price + gpuBest.price + cpu.extraKitCost;
+  const gainPct = Math.round(((metrics.fps1440 - 34) / 34) * 100);
+
+  let alertHtml = '';
+  if (gpu.id === 'rtx5060ti_16' && gpuBest.price >= 4500) {
+    alertHtml = `<div class="p-2.5 rounded bg-red-950/70 border border-red-700 text-xs text-red-200">
+      🚨 <b>Alerta de Preço Inflado:</b> A RTX 5060 Ti 16GB por <b>R$ ${gpuBest.price.toLocaleString('pt-BR')}</b> está colada na <b>RTX 5070 12GB (R$ 5.499)</b>, que entrega +28% de desempenho bruto! Só compre a 5060 Ti 16GB se cair abaixo de R$ 3.699 no seu Bot do Discord.
+    </div>`;
+  } else if (metrics.bottleneck1080 < 1) {
+    alertHtml = `<div class="p-2.5 rounded bg-amber-950/70 border border-amber-700 text-xs text-amber-200">
+      ⚠️ <b>Gargalo de CPU:</b> Seu Ryzen 5 3600 limita aproximadamente 28% desta placa em 1080p.
+    </div>`;
+  } else {
+    alertHtml = `<div class="p-2.5 rounded bg-emerald-950/60 border border-emerald-700 text-xs text-emerald-200">
+      ✅ <b>Sinergia Excelente:</b> ${cpu.name} empurra 100% da ${gpu.name} mantendo seus 32GB RAM!
+    </div>`;
+  }
+
+  document.getElementById('combo-summary').innerHTML = `
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      <div class="p-2.5 rounded bg-slate-900 border border-slate-800">
+        <div class="text-slate-400">Investimento Total Líquido</div>
+        <div class="text-lg font-bold text-emerald-400">R$ ${totalUpgrade.toLocaleString('pt-BR')}</div>
+        <div class="text-[10px] text-slate-400">${cpu.extraKitCost > 0 ? 'Inclui +R$ ' + cpu.extraKitCost + ' Kit AM5/DDR5' : 'Aproveita Placa AM4 + 32GB DDR4'}</div>
+      </div>
+      <div class="p-2.5 rounded bg-slate-900 border border-slate-800">
+        <div class="text-slate-400">Salto vs GTX 1660 (1440p)</div>
+        <div class="text-lg font-bold text-indigo-400">+${gainPct}% FPS</div>
+        <div class="text-[10px] text-slate-400">1080p: ${metrics.fps1080} FPS | 1440p: ${metrics.fps1440} FPS</div>
+      </div>
+    </div>
+    ${alertHtml}
+  `;
+
+  // Chart 1: FPS
+  const ctx1 = document.getElementById('fpsChart').getContext('2d');
+  if (fpsChartInstance) fpsChartInstance.destroy();
+  fpsChartInstance = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: ['1080p Ultra', '1440p QuadHD', 'Estabilidade 1% Low'],
+      datasets: [
+        { label: 'Atual (R5 3600 + GTX 1660)', data: [52, 34, 36], backgroundColor: '#475569' },
+        { label: 'Combo Selecionado', data: [metrics.fps1080, metrics.fps1440, metrics.low1], backgroundColor: '#10b981' }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 10 } } } }, scales: { y: { ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } } }
+  });
+
+  // Games Bars
+  const games = [
+    { name: 'Clair Obscur: Expedition 33 (1440p Alto)', factor: 0.78 },
+    { name: 'Cyberpunk 2077 (1440p Ultra)', factor: 0.72 },
+    { name: 'Red Dead Redemption 2 (1440p Ultra)', factor: 0.95 },
+    { name: 'Destiny 2 — Raids / Dungeons (1440p)', factor: 1.35 },
+    { name: 'League of Legends / CS2 (1080p Comp.)', factor: 2.40 }
+  ];
+  document.getElementById('games-bars').innerHTML = games.map(gm => {
+    const fps = Math.round(metrics.fps1440 * gm.factor);
+    const width = Math.min(100, Math.round((fps / 260) * 100));
+    return `
+      <div>
+        <div class="flex justify-between mb-1">
+          <span class="text-slate-300 font-medium">${gm.name}</span>
+          <span class="text-emerald-400 font-bold">${fps} FPS</span>
+        </div>
+        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+          <div class="bg-emerald-500 h-2 rounded-full" style="width:${width}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Chart 2: Custo por FPS entre GPUs com a CPU atual
+  const compareGpus = gpus.filter(g => g.id !== 'gtx1660' && g.id !== 'rtx5090');
+  const labels = compareGpus.map(g => g.name.replace('GeForce ', '').replace('Radeon ', ''));
+  const costData = compareGpus.map(g => {
+    const m = calcComboMetrics(cpu, g, useDlss);
+    const fpsGain = Math.max(1, m.fps1440 - 34);
+    const gPrice = getBestStoreOffer(g).price;
+    return Math.round((gPrice + cpuBest.price + cpu.extraKitCost) / fpsGain);
+  });
+
+  const ctx2 = document.getElementById('costFpsChart').getContext('2d');
+  if (costChartInstance) costChartInstance.destroy();
+  costChartInstance = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'R$ por FPS ganho em 1440p (Menor é melhor)',
+        data: costData,
+        backgroundColor: compareGpus.map(g => g.id === selectedGpuId ? '#10b981' : (g.id === 'rtx5060ti_16' ? '#ef4444' : '#6366f1'))
+      }]
+    },
+    options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#94a3b8' } }, y: { ticks: { color: '#cbd5e1', font: { size: 10 } } } } }
+  });
+}
+
+function renderPriceMatrix() {
+  const allItems = [...cpus.filter(c => c.id !== 'r5_3600'), ...gpus.filter(g => g.id !== 'gtx1660')];
+  const tbody = document.getElementById('price-matrix-body');
+  tbody.innerHTML = allItems.map(item => {
+    const best = getBestStoreOffer(item);
+    const diff = best.price - item.targetPrice;
+    let statusBadge = '';
+    if (best.price <= item.targetPrice) {
+      statusBadge = '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">🟢 COMPRAR AGORA</span>';
+    } else if (best.price <= item.targetPrice * 1.12) {
+      statusBadge = '<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">🟡 AGUARDAR CUPOM</span>';
+    } else {
+      statusBadge = `<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-bold">🔴 CARO (+R$ ${diff.toLocaleString('pt-BR')})</span>`;
+    }
+
+    return `
+      <tr class="hover:bg-slate-900/50">
+        <td class="py-2.5 px-3 font-semibold text-white">${item.name}</td>
+        ${['pichau', 'kabum', 'terabyte', 'amazon'].map(st => `
+          <td class="py-2 px-3">
+            <input type="number" value="${item.stores[st]}" onchange="updateStorePrice('${item.id}','${st}',this.value)"
+              class="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 focus:border-emerald-500 outline-none">
+          </td>
+        `).join('')}
+        <td class="py-2.5 px-3 font-bold text-emerald-400">R$ ${best.price.toLocaleString('pt-BR')} <span class="text-[10px] text-slate-400 uppercase">(${best.store})</span></td>
+        <td class="py-2 px-3">
+          <input type="number" value="${item.targetPrice}" onchange="updateTargetPrice('${item.id}',this.value)"
+            class="w-24 bg-indigo-950/60 border border-indigo-700 rounded px-2 py-1 text-amber-300 font-bold outline-none">
+        </td>
+        <td class="py-2.5 px-3">${statusBadge}</td>
+      </tr>`;
+  }).join('');
+
+  updateDiscordJsonPreview();
+}
+
+function updateStorePrice(id, store, val) {
+  const item = [...cpus, ...gpus].find(x => x.id === id);
+  if (item) { item.stores[store] = parseInt(val, 10) || 0; renderAll(); }
+}
+
+function updateTargetPrice(id, val) {
+  const item = [...cpus, ...gpus].find(x => x.id === id);
+  if (item) { item.targetPrice = parseInt(val, 10) || 0; renderAll(); }
+}
+
+function setPaymentMode(mode) {
+  paymentMode = mode;
+  document.getElementById('payPixBtn').className = mode === 'pix' ? 'px-3 py-1 rounded bg-emerald-600 text-white font-bold' : 'px-3 py-1 rounded text-slate-400 hover:text-white';
+  document.getElementById('payInstallBtn').className = mode === 'installment' ? 'px-3 py-1 rounded bg-emerald-600 text-white font-bold' : 'px-3 py-1 rounded text-slate-400 hover:text-white';
+  renderAll();
+}
+
+function applyPreset(cpuId, gpuId) {
+  selectedCpuId = cpuId;
+  selectedGpuId = gpuId;
+  renderAll();
+}
+
+function switchTab(tab) {
+  ['sim', 'prices', 'discord'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+    document.getElementById('tabBtn-' + t).className = t === tab
+      ? 'px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white transition'
+      : 'px-4 py-2 rounded-lg text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+  });
+}
+
+const targetMeta = {
+  r7_5800xt: { query: 'Ryzen 7 5800XT', kabumQuery: 'ryzen-7-5800xt', meupcSlug: 'jSH2T5/cpu-amd-ryzen-7-5800xt-100-100001582box', mustInclude: ['5800xt'], mustExclude: ['pc gamer', 'computador'] },
+  r7_5700x: { query: 'Ryzen 7 5700X', kabumQuery: 'ryzen-7-5700x', meupcSlug: 'GF9m4K/processador-amd-ryzen-7-5700x-100100000926wof', mustInclude: ['5700x'], mustExclude: ['5700x3d', '5700g', 'pc gamer', 'computador'] },
+  r7_5700x3d: { query: 'Ryzen 7 5700X3D', kabumQuery: 'ryzen-7-5700x3d', meupcSlug: 'HD68k9/processador-amd-ryzen-7-5700x3d-100100001503wof', mustInclude: ['5700x3d'], mustExclude: ['pc gamer', 'computador'] },
+  r5_5600: { query: 'Ryzen 5 5600', kabumQuery: 'ryzen-5-5600', meupcSlug: 'DPW42M/processador-amd-ryzen-5-5600-100100000927box', mustInclude: ['5600'], mustExclude: ['5600g', '5600gt', '5600x', 'pc gamer', 'computador'] },
+  rtx5060ti_16: { query: 'RTX 5060 Ti 16GB', kabumQuery: 'rtx-5060-ti-16gb', meupcSlug: '551p32/placa-video-pcyes-geforce-rtx-5060-ti-geforce-rtx-5060-ti-16gb', mustInclude: ['5060 ti', '16gb'], mustExclude: ['8gb', 'pc gamer', 'computador', 'notebook'] },
+  rtx5070: { query: 'RTX 5070', kabumQuery: 'rtx-5070-12gb', meupcSlug: 'AMkHgV/placa-video-inno3d-geforce-rtx-5070-geforce-rtx-5070-12gb', mustInclude: ['rtx 5070', '12gb'], mustExclude: ['5070 ti', 'pc gamer', 'computador', 'notebook'] },
+  rx7700xt: { query: 'RX 7700 XT', kabumQuery: 'rx-7700-xt', meupcSlug: 'bax3N7/placa-video-gigabyte-radeon-rx-7700-xt-radeonrx7700xt12gb', mustInclude: ['7700 xt'], mustExclude: ['pc gamer', 'computador'] },
+  rtx5060: { query: 'RTX 5060', kabumQuery: 'rtx-5060-8gb', meupcSlug: 'VHJEVp/placa-video-inno3d-geforce-rtx-5060-geforce-rtx-5060-8gb', mustInclude: ['rtx 5060', '8gb'], mustExclude: ['5060 ti', 'pc gamer', 'computador', 'notebook'] },
+  rx7600: { query: 'RX 7600', kabumQuery: 'rx-7600-8gb', meupcSlug: 'bHN2I4/placa-video-asrock-radeon-rx-7600-radeonrx76008gb', mustInclude: ['rx 7600', '8gb'], mustExclude: ['7600 xt', 'pc gamer', 'computador'] }
+};
+
+function updateDiscordJsonPreview() {
+  const tracked = ['r7_5800xt', 'r7_5700x', 'r7_5700x3d', 'r5_5600', 'rtx5060ti_16', 'rtx5070', 'rx7700xt', 'rtx5060', 'rx7600'];
+  const all = [...cpus, ...gpus].filter(x => tracked.includes(x.id));
+  const payload = all.map(item => {
+    const meta = targetMeta[item.id] || {};
+    return {
+      id: item.id,
+      name: item.name.split('(')[0].trim(),
+      query: meta.query || item.name.split('(')[0].trim(),
+      kabumQuery: meta.kabumQuery || '',
+      meupcSlug: meta.meupcSlug || '',
+      mustInclude: meta.mustInclude || [],
+      mustExclude: meta.mustExclude || ['pc gamer', 'computador'],
+      targetGreen: item.targetPrice,
+      targetYellow: Math.round(item.targetPrice * 1.08)
+    };
+  });
+  document.getElementById('jsonPreview').textContent = JSON.stringify(payload, null, 2);
+}
+
+function copyTargetsJson() {
+  navigator.clipboard.writeText(document.getElementById('jsonPreview').textContent);
+  document.getElementById('webhookStatus').textContent = '✅ targets.json copiado para a área de transferência!';
+}
+
+async function sendTestWebhook() {
+  const url = document.getElementById('webhookUrlInput').value.trim();
+  const statusEl = document.getElementById('webhookStatus');
+  if (!url.startsWith('https://discord.com/api/webhooks/')) {
+    statusEl.textContent = '❌ Cole uma URL válida de Webhook do Discord (https://discord.com/api/webhooks/...).';
+    return;
+  }
+  const cpu = cpus.find(c => c.id === selectedCpuId);
+  const gpu = gpus.find(g => g.id === selectedGpuId);
+  const cpuOffer = getBestStoreOffer(cpu);
+  const gpuOffer = getBestStoreOffer(gpu);
+
+  const body = {
+    username: "UpgradeLab Price Bot",
+    embeds: [{
+      title: `🔔 Monitoramento Ativo: ${cpu.name} + ${gpu.name}`,
+      description: "Teste de conexão do seu Simulador de Upgrade direto para o Discord!",
+      color: gpuOffer.price <= gpu.targetPrice ? 3066993 : 15158332,
+      fields: [
+        { name: "Processador", value: `${cpu.name}\n**R$ ${cpuOffer.price.toLocaleString('pt-BR')}** (${cpuOffer.store.toUpperCase()})\nMeta: R$ ${cpu.targetPrice.toLocaleString('pt-BR')}`, inline: true },
+        { name: "Placa de Vídeo", value: `${gpu.name}\n**R$ ${gpuOffer.price.toLocaleString('pt-BR')}** (${gpuOffer.store.toUpperCase()})\nMeta: R$ ${gpu.targetPrice.toLocaleString('pt-BR')}`, inline: true }
+      ],
+      footer: { text: "UpgradeLab BR • Monitoramento de Hardware" },
+      timestamp: new Date().toISOString()
+    }]
+  };
+
+  try {
+    statusEl.textContent = 'Enviando para o Discord...';
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    statusEl.textContent = res.ok ? '✅ Alerta enviado com sucesso! Confira seu canal no Discord.' : `❌ Erro HTTP ${res.status} ao enviar Webhook.`;
+  } catch (err) {
+    statusEl.textContent = '❌ Falha de rede ao disparar o Webhook.';
+  }
+}
+
+function renderAll() {
+  renderLists();
+  renderSummaryAndCharts();
+  renderPriceMatrix();
+}
+
+renderAll();
+</script>
+</body>
+</html>
