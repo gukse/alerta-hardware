@@ -5,8 +5,13 @@
     "query": "Ryzen 7 5800XT",
     "kabumQuery": "ryzen-7-5800xt",
     "meupcSlug": "jSH2T5/cpu-amd-ryzen-7-5800xt-100-100001582box",
-    "mustInclude": ["5800xt"],
-    "mustExclude": ["pc gamer", "computador"],
+    "mustInclude": [
+      "5800xt"
+    ],
+    "mustExclude": [
+      "pc gamer",
+      "computador"
+    ],
     "targetGreen": 1250,
     "targetYellow": 1350
   },
@@ -16,8 +21,15 @@
     "query": "Ryzen 7 5700X",
     "kabumQuery": "ryzen-7-5700x",
     "meupcSlug": "GF9m4K/processador-amd-ryzen-7-5700x-100100000926wof",
-    "mustInclude": ["5700x"],
-    "mustExclude": ["5700x3d", "5700g", "pc gamer", "computador"],
+    "mustInclude": [
+      "5700x"
+    ],
+    "mustExclude": [
+      "5700x3d",
+      "5700g",
+      "pc gamer",
+      "computador"
+    ],
     "targetGreen": 999,
     "targetYellow": 1080
   },
@@ -27,21 +39,15 @@
     "query": "Ryzen 7 5700X3D",
     "kabumQuery": "ryzen-7-5700x3d",
     "meupcSlug": "HD68k9/processador-amd-ryzen-7-5700x3d-100100001503wof",
-    "mustInclude": ["5700x3d"],
-    "mustExclude": ["pc gamer", "computador"],
+    "mustInclude": [
+      "5700x3d"
+    ],
+    "mustExclude": [
+      "pc gamer",
+      "computador"
+    ],
     "targetGreen": 1499,
     "targetYellow": 1650
-  },
-  {
-    "id": "r5_5600",
-    "name": "AMD Ryzen 5 5600",
-    "query": "Ryzen 5 5600",
-    "kabumQuery": "ryzen-5-5600",
-    "meupcSlug": "DPW42M/processador-amd-ryzen-5-5600-100100000927box",
-    "mustInclude": ["5600"],
-    "mustExclude": ["5600g", "5600gt", "5600x", "pc gamer", "computador"],
-    "targetGreen": 699,
-    "targetYellow": 760
   },
   {
     "id": "rtx5060ti_16",
@@ -49,8 +55,16 @@
     "query": "RTX 5060 Ti 16GB",
     "kabumQuery": "rtx-5060-ti-16gb",
     "meupcSlug": "551p32/placa-video-pcyes-geforce-rtx-5060-ti-geforce-rtx-5060-ti-16gb",
-    "mustInclude": ["5060 ti", "16gb"],
-    "mustExclude": ["8gb", "pc gamer", "computador", "notebook"],
+    "mustInclude": [
+      "5060 ti",
+      "16gb"
+    ],
+    "mustExclude": [
+      "8gb",
+      "pc gamer",
+      "computador",
+      "notebook"
+    ],
     "targetGreen": 3699,
     "targetYellow": 3999
   },
@@ -60,21 +74,18 @@
     "query": "RTX 5070",
     "kabumQuery": "rtx-5070-12gb",
     "meupcSlug": "AMkHgV/placa-video-inno3d-geforce-rtx-5070-geforce-rtx-5070-12gb",
-    "mustInclude": ["rtx 5070", "12gb"],
-    "mustExclude": ["5070 ti", "pc gamer", "computador", "notebook"],
+    "mustInclude": [
+      "rtx 5070",
+      "12gb"
+    ],
+    "mustExclude": [
+      "5070 ti",
+      "pc gamer",
+      "computador",
+      "notebook"
+    ],
     "targetGreen": 4699,
     "targetYellow": 4999
-  },
-  {
-    "id": "rx7700xt",
-    "name": "Radeon RX 7700 XT 12GB",
-    "query": "RX 7700 XT",
-    "kabumQuery": "rx-7700-xt",
-    "meupcSlug": "bax3N7/placa-video-gigabyte-radeon-rx-7700-xt-radeonrx7700xt12gb",
-    "mustInclude": ["7700 xt"],
-    "mustExclude": ["pc gamer", "computador"],
-    "targetGreen": 3099,
-    "targetYellow": 3299
   },
   {
     "id": "rtx5060",
@@ -82,20 +93,17 @@
     "query": "RTX 5060",
     "kabumQuery": "rtx-5060-8gb",
     "meupcSlug": "VHJEVp/placa-video-inno3d-geforce-rtx-5060-geforce-rtx-5060-8gb",
-    "mustInclude": ["rtx 5060", "8gb"],
-    "mustExclude": ["5060 ti", "pc gamer", "computador", "notebook"],
+    "mustInclude": [
+      "rtx 5060",
+      "8gb"
+    ],
+    "mustExclude": [
+      "5060 ti",
+      "pc gamer",
+      "computador",
+      "notebook"
+    ],
     "targetGreen": 2499,
     "targetYellow": 2699
-  },
-  {
-    "id": "rx7600",
-    "name": "Radeon RX 7600 8GB",
-    "query": "RX 7600",
-    "kabumQuery": "rx-7600-8gb",
-    "meupcSlug": "bHN2I4/placa-video-asrock-radeon-rx-7600-radeonrx76008gb",
-    "mustInclude": ["rx 7600", "8gb"],
-    "mustExclude": ["7600 xt", "pc gamer", "computador"],
-    "targetGreen": 1650,
-    "targetYellow": 1799
   }
 ]
