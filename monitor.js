@@ -5,7 +5,6 @@ const args = process.argv.slice(2);
 const isDryRun = args.includes('--dry-run');
 const forceSummary =
   args.includes('--summary') ||
-  process.env.GITHUB_EVENT_NAME === 'workflow_dispatch' ||
   process.env.SEND_SUMMARY === 'true';
 
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
@@ -277,7 +276,8 @@ async function run() {
 
     results.push({ item, bestOffer, status });
 
-    if (status === 'GREEN' || status === 'YELLOW') {
+    const allowYellowAlerts = process.env.ALERT_YELLOW === 'true' || args.includes('--yellow');
+    if (status === 'GREEN' || (status === 'YELLOW' && allowYellowAlerts)) {
       await sendDiscordAlert(item, bestOffer, status);
       alertsSent++;
     }
