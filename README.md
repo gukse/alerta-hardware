@@ -14,6 +14,7 @@ Inclui também o **Simulador Interativo (`index.html`)** para comparar combos de
   3. **Catálogo SSR da KaBuM! (`__NEXT_DATA__`)** para validação direta de estoque à vista no PIX.
 - [`targets.json`](./targets.json) — Lista de peças monitoradas com metas de compra imediata (`targetGreen`) e alerta amarelo de cupom (`targetYellow`).
 - [`.github/workflows/monitor.yml`](./.github/workflows/monitor.yml) — Workflow do GitHub Actions agendado a cada 30 minutos (`*/30 * * * *`) e com botão de execução manual (`workflow_dispatch`).
+- `alert-state.json` — Estado dos alertas já enviados (guardado no cache do GitHub Actions, fora do git). Cada peça só gera alerta na primeira vez que bate a meta, quando sobe de amarelo para verde ou quando o preço cai ainda mais. Se o preço voltar a subir acima da meta, o estado zera e a próxima queda avisa de novo.
 - [`index.html`](./index.html) — Painel interativo **UpgradeLab BR** (Simulador de FPS, Semáforo Multi-lojas e Testador de Webhook do Discord).
 
 ---

@@ -13,6 +13,31 @@ if (!WEBHOOK_URL && !isDryRun) {
   process.exit(1);
 }
 
+// Estado dos alertas já enviados (persistido entre execuções via cache do GitHub Actions)
+const STATE_FILE = process.env.ALERT_STATE_FILE || './alert-state.json';
+
+async function loadAlertState() {
+  try {
+    return JSON.parse(await fs.readFile(STATE_FILE, 'utf-8'));
+  } catch {
+    return {};
+  }
+}
+
+async function saveAlertState(state) {
+  await fs.writeFile(STATE_FILE, JSON.stringify(state, null, 2) + '\n');
+}
+
+const LEVEL_RANK = { YELLOW: 1, GREEN: 2 };
+
+// Avisa só na primeira vez que entra na faixa, quando sobe de nível (amarelo → verde)
+// ou quando o preço cai abaixo do último preço já avisado.
+function shouldAlert(prev, level, price) {
+  if (!prev) return true;
+  if (LEVEL_RANK[level] > (LEVEL_RANK[prev.level] || 0)) return true;
+  return price < prev.price;
+}
+
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -162,7 +187,7 @@ function formatBRL(value) {
 }
 
 async function sendDiscordAlert(item, offer, level) {
-  if (isDryRun) return;
+  if (isDryRun) return false;
   const isGreen = level === 'GREEN';
   const embed = {
     title: `${isGreen ? '🟢 COMPRA IMEDIATA' : '🟡 ALERTA AMARELO'}: ${item.name}`,
@@ -194,6 +219,7 @@ async function sendDiscordAlert(item, offer, level) {
   if (!res.ok) {
     console.error(`❌ Erro HTTP ${res.status} ao enviar alerta Discord para ${item.name}`);
   }
+  return res.ok;
 }
 
 async function sendDiscordSummary(results) {
@@ -247,6 +273,8 @@ async function run() {
 
   console.log(`🔎 Iniciando varredura de ${targets.length} peças de hardware...`);
   const session = await createMeuPcSession();
+  const alertState = await loadAlertState();
+  const allowYellowAlerts = process.env.ALERT_YELLOW === 'true' || args.includes('--yellow');
   const results = [];
   let alertsSent = 0;
 
@@ -281,11 +309,27 @@ async function run() {
 
     results.push({ item, bestOffer, status });
 
-    const allowYellowAlerts = process.env.ALERT_YELLOW === 'true' || args.includes('--yellow');
-    if (status === 'GREEN' || (status === 'YELLOW' && allowYellowAlerts)) {
-      await sendDiscordAlert(item, bestOffer, status);
+    const alertable = status === 'GREEN' || (status === 'YELLOW' && allowYellowAlerts);
+    if (!alertable) {
+      // Saiu da faixa de alerta: zera o estado para avisar de novo na próxima queda
+      delete alertState[item.id];
+      continue;
+    }
+
+    const prev = alertState[item.id];
+    if (!shouldAlert(prev, status, bestOffer.price)) {
+      console.log(`   🔕 Já avisado a R$ ${formatBRL(prev.price)} — sem novo alerta.`);
+      continue;
+    }
+
+    if (await sendDiscordAlert(item, bestOffer, status)) {
+      alertState[item.id] = { level: status, price: bestOffer.price, at: new Date().toISOString() };
       alertsSent++;
     }
+  }
+
+  if (!isDryRun) {
+    await saveAlertState(alertState);
   }
 
   if (forceSummary || (alertsSent === 0 && process.env.ALWAYS_NOTIFY === 'true')) {

@@ -27,8 +27,23 @@ jobs:
         with:
           node-version: '24'
 
+      # Recupera os alertas já enviados para não repetir o mesmo aviso a cada 30 min
+      - name: Restaurar estado dos alertas
+        uses: actions/cache/restore@v4
+        with:
+          path: alert-state.json
+          key: alert-state-${{ github.run_id }}
+          restore-keys: alert-state-
+
       - name: Executar Monitor e Disparar Webhook Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           SEND_SUMMARY: ${{ github.event.inputs.send_summary || 'false' }}
         run: node monitor.js
+
+      - name: Salvar estado dos alertas
+        if: always() && hashFiles('alert-state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: alert-state.json
+          key: alert-state-${{ github.run_id }}
