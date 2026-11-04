@@ -16,12 +16,17 @@ if (!WEBHOOK_URL && !isDryRun) {
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
+// Normaliza hífens/underscores para espaço: "B550M-PLUS" casa com "b550m plus"
+function normalizeText(text) {
+  return (text || '').toLowerCase().replace(/[-_]/g, ' ').replace(/\s+/g, ' ');
+}
+
 function matchesFilters(title, item) {
-  const lower = (title || '').toLowerCase();
+  const lower = normalizeText(title);
   const mustInclude = item.mustInclude || [];
   const mustExclude = item.mustExclude || ['pc gamer', 'computador', 'notebook'];
-  if (!mustInclude.every(kw => lower.includes(kw.toLowerCase()))) return false;
-  if (mustExclude.some(kw => lower.includes(kw.toLowerCase()))) return false;
+  if (!mustInclude.every(kw => lower.includes(normalizeText(kw)))) return false;
+  if (mustExclude.some(kw => lower.includes(normalizeText(kw)))) return false;
   return true;
 }
 

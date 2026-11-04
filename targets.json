@@ -10,7 +10,9 @@
     ],
     "mustExclude": [
       "pc gamer",
-      "computador"
+      "computador",
+      "placa mãe",
+      "+"
     ],
     "targetGreen": 1250,
     "targetYellow": 1350
@@ -33,6 +35,24 @@
     ],
     "targetGreen": 3699,
     "targetYellow": 3999
+  },
+  {
+    "id": "rtx5060ti_8",
+    "name": "GeForce RTX 5060 Ti 8GB GDDR7",
+    "query": "RTX 5060 Ti 8GB",
+    "kabumQuery": "rtx-5060-ti-8gb",
+    "mustInclude": [
+      "5060 ti",
+      "8gb"
+    ],
+    "mustExclude": [
+      "16gb",
+      "pc gamer",
+      "computador",
+      "notebook"
+    ],
+    "targetGreen": 2899,
+    "targetYellow": 3099
   },
   {
     "id": "rtx5070",
@@ -84,7 +104,11 @@
     "mustExclude": [
       "pc gamer",
       "computador",
-      "notebook"
+      "notebook",
+      "processador",
+      "ryzen",
+      "memória",
+      "+"
     ],
     "targetGreen": 684,
     "targetYellow": 739
