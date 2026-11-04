@@ -182,6 +182,44 @@ async function fetchKabumPrice(item, minSanityPrice) {
   }
 }
 
+// Fonte 4: Busca do Buscapé (agrega Amazon, Magazine Luiza, KaBuM! e outras).
+// Funciona a partir do GitHub Actions, ao contrário do MeuPC (bloqueado pelo Cloudflare).
+async function fetchBuscapePrice(item, minSanityPrice) {
+  try {
+    const url = `https://www.buscape.com.br/search?q=${encodeURIComponent(item.query)}`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'pt-BR,pt;q=0.9' }
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const nextData = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
+    if (!nextData) return null;
+
+    const hits = JSON.parse(nextData[1]).props?.initialReduxState?.hits?.hits || [];
+    const valid = hits
+      .filter(hit => {
+        const price = parseFloat(hit.price);
+        if (!price || price < minSanityPrice) return false;
+        return matchesFilters(hit.name, item);
+      })
+      .map(hit => {
+        const merchant = hit.merchantName || hit.bestOffer?.merchantName || 'Menor Loja';
+        const marketplace = hit.marketplace ? ' — marketplace' : '';
+        return {
+          title: hit.name,
+          price: parseFloat(hit.price),
+          store: `${merchant}${marketplace} (via Buscapé)`,
+          link: `https://www.buscape.com.br${hit.url}`
+        };
+      })
+      .sort((a, b) => a.price - b.price);
+
+    return valid[0] || null;
+  } catch {
+    return null;
+  }
+}
+
 function formatBRL(value) {
   return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -280,13 +318,14 @@ async function run() {
 
   for (const item of targets) {
     const minSanityPrice = Math.round(item.targetGreen * 0.6); // Evita caixas vazias/acessórios
-    const [meupcApi, meupcPage, kabum] = await Promise.all([
+    const [meupcApi, meupcPage, kabum, buscape] = await Promise.all([
       fetchMeuPcApiPrice(session, item, minSanityPrice),
       fetchMeuPcPagePrice(item, minSanityPrice),
-      fetchKabumPrice(item, minSanityPrice)
+      fetchKabumPrice(item, minSanityPrice),
+      fetchBuscapePrice(item, minSanityPrice)
     ]);
 
-    const candidates = [meupcApi, meupcPage, kabum].filter(Boolean);
+    const candidates = [meupcApi, meupcPage, kabum, buscape].filter(Boolean);
     if (!candidates.length) {
       console.log(`⚪ [${item.name}] Nenhuma oferta em estoque encontrada.`);
       results.push({ item, bestOffer: null, status: 'NONE' });
